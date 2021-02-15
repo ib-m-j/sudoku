@@ -1,5 +1,27 @@
 import userinterface
 import sys
+import itertools
+
+def printS(x):
+    toPrint = sorted(list(x))
+    print(toPrint)
+
+
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    "this implementation does not include empty set"
+    s = list(iterable)
+    return itertools.chain.from_iterable(
+        itertools.combinations(s, r) for r in range(1,len(s)+1))
+
+
+def findRestrictedTo(setOfValues, setOfCells):
+    res = []
+    for c in setOfCells:
+        if setOfValues <= c.blockedValues:
+            res.append(c)
+    return setOfCells - set(res)
+
 
 class ActionItem:
     #insertBlocked
@@ -42,13 +64,24 @@ class SudokuBoard:
 
     def scanForConstraints(self):
         for sub in self.subUnits:
-            openCells = []
-            for c in sub.cells:
-                if c.value:
-                    openCells.append(c)
-    XXXXXXXXXXXXXXX
-
-
+            (openCells, remainingSymbols) = sub.getOpenCellsRemainingSymbols()
+            for subSet in powerset(remainingSymbols):
+                restricted = findRestrictedTo(set(subSet), openCells)
+                #forPrint1 = [c.key for c in openCells]
+                forPrint = [c.key for c in restricted]
+                #print("pint\n")
+                #printS(subSet)
+                #printS(forPrint1)
+                #printS(forPrint)
+                #if len(subSet) == 2:
+                #    sys.exit(0)
+                if len(restricted) == len(subSet) and len(subSet) == 2:
+                    print("\nfound restriction")
+                    print(sub)
+                    printS(remainingSymbols)
+                    printS(subSet)
+                    printS(forPrint)
+                    print("\n")
 
     def displayBlockedRow(self, row=2):
         for sub in self.subUnits:
@@ -88,9 +121,27 @@ class SudokuSubunit():
 
     def getUnusedValues(self):
         res = set([])
-        usedV = set([]).union([c.value for c in self.cells])
+        for c in self.cells:
+            if c.value:
+                usedV = res.union(set(c.value))
+        print(symbols, usedV)
         return symbols - usedV    
         
+
+    def getOpenCellsRemainingSymbols(self):
+        openCells = []
+        taken = []
+        for c in self.cells:
+            print(c.key, not(c.value), len(openCells), len(taken))
+            if not(c.value):
+                openCells.append(c)
+            else:
+                taken.append(c.value)
+                
+        return (set(openCells), symbols - set(taken))
+        
+
+
     def __str__(self):
         res = self.id
         for c in self.cells:
@@ -150,6 +201,7 @@ class SudokuCell:
         self.value = v
     
 
+        
     def addBelongsTo(self, subUnit):
         self.belongsTo.append(subUnit)
 
@@ -209,7 +261,7 @@ def run():
     for (cellKey, value) in fixedInit.items():
         mainBoard.insertValue(cellKey, value)
     
-    #print(mainBoard)
+    print(mainBoard)
     #print(mainBoard.displayBlockedRow())
     foundValues = 0
     for c in allCells:
