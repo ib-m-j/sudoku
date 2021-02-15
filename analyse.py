@@ -6,13 +6,27 @@ def printS(x):
     toPrint = sorted(list(x))
     print(toPrint)
 
-
-def powerset(iterable):
+def printActionPoints(a):
+    a.sort(key=[-1])
+    res = ""
+    for x in a:
+        if x[0] == "setValue":
+            res = res + "{} cell: {} Value = {}\n".format(x[0],x[1].key,x[2])
+        elif x[0] =="Restriction":
+            cells = [c.key for c in x[2]]
+            cellsText = ""
+            for k in cells:
+                cellsText = cellsText + str(k) + ","
+            res = res + "Restriction subunit: {}, Cells: {} values: {}\n".format(
+                x[1].id,cellsText,x[3])
+    print( res)
+    
+def powerset(iterable, n):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
     "this implementation does not include empty set"
     s = list(iterable)
     return itertools.chain.from_iterable(
-        itertools.combinations(s, r) for r in range(1,len(s)+1))
+        itertools.combinations(s, r) for r in range(1,n))
 
 
 def findRestrictedTo(setOfValues, setOfCells):
@@ -62,27 +76,48 @@ class SudokuBoard:
                 res = res + [sub]
         return res
 
+    def scanCellsForValue(self):
+        res = []
+        for c in self.cells:
+            if not(c.value):
+                blocked = []
+                for sub in c.belongsTo:
+                    for newCell in sub.cells:
+                        if newCell.value:
+                            blocked.append(newCell.value)
+
+                if len(set(blocked)) == len(symbols) -1:
+                    res.append(("setValue", c,(symbols - set(blocked)).pop()))
+        #resolve this by setting cellc value to "
+        "the last variable in tuple above            "
+    
+        return res           
+
+
     def scanForConstraints(self):
+        "this calls powerset but does not include the full set"
+        "nor does it full set minus one member"
+        "the fullset minus one member correspods to what is investigated"
+        "in scan cells for value"
+        constraintsList = []
+        
         for sub in self.subUnits:
             (openCells, remainingSymbols) = sub.getOpenCellsRemainingSymbols()
-            for subSet in powerset(remainingSymbols):
+            for subSet in powerset(remainingSymbols,
+                                   len(remainingSymbols) - 2):
                 restricted = findRestrictedTo(set(subSet), openCells)
-                #forPrint1 = [c.key for c in openCells]
-                forPrint = [c.key for c in restricted]
-                #print("pint\n")
-                #printS(subSet)
-                #printS(forPrint1)
-                #printS(forPrint)
-                #if len(subSet) == 2:
-                #    sys.exit(0)
-                if len(restricted) == len(subSet) and len(subSet) == 2:
-                    print("\nfound restriction")
-                    print(sub)
-                    printS(remainingSymbols)
-                    printS(subSet)
-                    printS(forPrint)
-                    print("\n")
+                if len(restricted) == len(subSet):
+                    constraintsList.append(("Restriction", sub,
+                                           restricted, subSet))
+                    #print("\nfound restriction")
+                    #print(sub)
+                    #printS(remainingSymbols)
+                    #printS(subSet)
+                    #printS(forPrint)
+                    #print("\n")
 
+        return(constraintsList)
+                    
     def displayBlockedRow(self, row=2):
         for sub in self.subUnits:
             if isinstance(sub, Row) and sub.rowNo == row:
@@ -124,7 +159,6 @@ class SudokuSubunit():
         for c in self.cells:
             if c.value:
                 usedV = res.union(set(c.value))
-        print(symbols, usedV)
         return symbols - usedV    
         
 
@@ -132,7 +166,6 @@ class SudokuSubunit():
         openCells = []
         taken = []
         for c in self.cells:
-            print(c.key, not(c.value), len(openCells), len(taken))
             if not(c.value):
                 openCells.append(c)
             else:
@@ -269,13 +302,16 @@ def run():
             foundValues += 1
 
     print(foundValues)
-    print(mainBoard.subUnits[0])
-    print(mainBoard.subUnits[0].getUnusedValues())
+    #print(mainBoard.subUnits[0])
+    #print(mainBoard.subUnits[0].getUnusedValues())
 
     
 
     while foundValues < 81:
-        mainBoard.scanForConstraints()
+        actionPoints = mainBoard.scanCellsForValue()
+        actionPoints.extend(mainBoard.scanForConstraints())
+        printActionPoints(actionPoints)
+        print(mainBoard)
         updateActions = []
         blockedValues = []
         
