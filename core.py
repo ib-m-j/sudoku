@@ -16,6 +16,49 @@ def findRestrictedTo(setOfValues, setOfCells):
     return setOfCells - set(res)
 
 
+class ActionItem:
+    def __init__(self, cells, values, subUnit = None):
+        self.subUnit = subUnit
+        self.cells = cells
+        self.values = values
+        #insertBlocked
+        #inferredBlockedValues 
+        pass
+
+    def updateBoard(self):
+        print("mystery", self.values)
+        if len(self.values) == 1:
+            assert(len(self.cells) == 1)
+            print("updating now", self.cells[0].key, self.values)
+            self.cells[0].setValue(self.values[0])
+            return True
+        return False
+    
+    def __str__(self):
+        if not(self.subUnit):
+            #set value directly#
+            return "{}: Cell: {} Value = {}".format(
+                "set value",self.cells[0].key, self.values)
+
+        else:
+            cellsText = ""
+            for k in self.cells:
+                cellsText = cellsText + str(k.key) + ","
+                
+            if len(self.cells) > 1:
+                type = "set value in subunit"
+            else:
+                type = "constrain"
+
+            return "{} {}  Cells: {} Values = {}".format(
+                type, self.subUnit.id, cellsText, self.values)
+
+
+
+
+
+
+
 
 class SudokuBoard:
     def __init__(self, cells, subUnits, symbols):
@@ -62,7 +105,7 @@ class SudokuBoard:
                             blocked.append(newCell.value)
 
                 if len(set(blocked)) == len(self.symbols) -1:
-                    res.append(("setValue", c,(self.symbols - set(blocked)).pop()))
+                    res.append(ActionItem([c],list(self.symbols-set(blocked))))
         #resolve this by setting cellc value to "
         "the last variable in tuple above            "
     
@@ -82,8 +125,8 @@ class SudokuBoard:
                                    len(remainingSymbols) - 2):
                 restricted = findRestrictedTo(set(subSet), openCells)
                 if len(restricted) == len(subSet):
-                    constraintsList.append(("Restriction", sub,
-                                           restricted, subSet))
+                    constraintsList.append(
+                        ActionItem(list(restricted), list(subSet), sub))
                     #print("\nfound restriction")
                     #print(sub)
                     #printS(remainingSymbols)
