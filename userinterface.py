@@ -3,7 +3,6 @@ import PySimpleGUI as sg
 import numpy
 import matplotlib as plt
 
-print("import userinterface")
 
 def getBoard(cellKeys):
 

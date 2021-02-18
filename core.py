@@ -1,3 +1,4 @@
+import sys
 import itertools
 
 def powerset(iterable, n):
@@ -8,14 +9,15 @@ def powerset(iterable, n):
         itertools.combinations(s, r) for r in range(1,n))
 
 
-def findRestrictedTo(setOfValues, setOfCells):
+def findRestrictedTo(level, setOfValues, setOfCells):
     res = []
     for c in setOfCells:
-        if setOfValues <= c.blockedValues:
+        if setOfValues <= c.getBlockedAtLevel(level):
+        #if setOfValues <= c.blockedValues:
             res.append(c)
     return setOfCells - set(res)
 
-
+    
 class ActionItem:
     def __init__(self, cells, values, subUnit = None):
         self.subUnit = subUnit
@@ -73,15 +75,16 @@ class SudokuBoard:
 
     #def actionItems = []
             
-    def insertValue(self, cellKey, v):
-        c = self.cellDict[cellKey]
-        c.value = v
-        c.blockedValues = set([])
-        for sub in self.getSubunitsFromCells([c]):
-            for c1 in sub.cells:
-                if c1 !=  c and not(c1.value):
-                   # print("inserted block", c1, c)
-                    c1.blockedValues = c1.blockedValues.union( set([v]))
+#    def insertValue(self, cellKey, v):
+#        c = self.cellDict[cellKey]
+#        c.setValue(v)
+#        #c.value = v
+#        #c.blockedValues = set([])
+#        #for sub in self.getSubunitsFromCells([c]):
+#        #    for c1 in sub.cells:
+#        #        if c1 !=  c and not(c1.value):
+#        #            print("inserted block", c1, c)
+#        #            c1.blockedValues[0] = c1.blockedValues[0].union( set([v]))
 
     def getSubunitsFromCells(self, cells):
     #finds subuinits that contain all c's in cells    
@@ -94,8 +97,17 @@ class SudokuBoard:
                 res = res + [sub]
         return res
 
-    def scanCellsForValue(self):
+    def scanCellsForValue(self, level = 0):
         res = []
+        for c in self.cells:
+            if not(c.value):
+                blocked = c.getBlockedAtLevel(level)
+                #print(blocked)
+                if len(blocked) == len(self.symbols) - 1:
+                    res.append(ActionItem([c],list(self.symbols-set(blocked))))
+        
+        
+        res1 = []
         for c in self.cells:
             if not(c.value):
                 blocked = []
@@ -103,16 +115,36 @@ class SudokuBoard:
                     for newCell in sub.cells:
                         if newCell.value:
                             blocked.append(newCell.value)
-
+                #print(blocked)
                 if len(set(blocked)) == len(self.symbols) -1:
-                    res.append(ActionItem([c],list(self.symbols-set(blocked))))
+                    res1.append(ActionItem([c],list(self.symbols-set(blocked))))
         #resolve this by setting cellc value to "
         "the last variable in tuple above            "
-    
+        print("Checking res firtst res")
+        for i in res:
+            print( i)
+        print("Now", res1)
+        for i in res1:
+            print (i)
+
         return res           
 
 
-    def scanForConstraints(self):
+    def otherSubunitsFromCells(self, restrictedCells, originSubunit):
+        a = list(restrictedCells)
+        print(a)
+        res = set(a[0].belongsTo)
+        print(res)
+        for s in a[1:]:
+            res = res.intersection(s.belongsTo)
+            print(res)
+        print( res.difference(set([originSubunit])))
+        sys.exit()
+        return res.difference(set([originSubunit]))
+        
+
+    
+    def scanForConstraints(self, level):
         "this calls powerset but does not include the full set"
         "nor does it full set minus one member"
         "the fullset minus one member correspods to what is investigated"
@@ -121,12 +153,25 @@ class SudokuBoard:
         
         for sub in self.subUnits:
             (openCells, remainingSymbols) = sub.getOpenCellsRemainingSymbols()
-            for subSet in powerset(remainingSymbols,
+            #-2 below because -1 handled in scanCellsForValues 0 irrelevant
+            for subRemainingSymbols in powerset(remainingSymbols,
                                    len(remainingSymbols) - 2):
-                restricted = findRestrictedTo(set(subSet), openCells)
-                if len(restricted) == len(subSet):
+                restricted = findRestrictedTo(
+                    level, set(subRemainingSymbols), openCells)
+                if len(restricted) == len(subRemainingSymbols):
                     constraintsList.append(
-                        ActionItem(list(restricted), list(subSet), sub))
+                        ActionItem(
+                            list(restricted),
+                            list(subRemainingSymbols), sub))
+                    
+                elif len(restricted) <=3:
+                    newSubunit = self.otherSubunitsFromCells(restricted, sub)
+                    print("found restrictuion item")
+                    print(newSubUnit)
+                    sys.exit()
+                    #value three above specific for standardsudoku
+                    #more = 
+                    
                     #print("\nfound restriction")
                     #print(sub)
                     #printS(remainingSymbols)
@@ -136,15 +181,15 @@ class SudokuBoard:
 
         return(constraintsList)
                     
-    def displayBlockedRow(self, row=2):
+    def displayBlockedRow(self, level=0, row=2):
         for sub in self.subUnits:
             if isinstance(sub, Row) and sub.rowNo == row:
-                res ="blocked by row {}\n".format(row)
+                res ="Blocked values level {} cells in row {}".format(level,row)
                 for c in sub.cells:
-                    sortList = sorted(list(c.blockedValues))
+                    res = res + "\ncol {} value: {}. ".format(c.key[0], c.value)
+                    sortList = sorted(list(c.getBlockedAtLevel(level)))
                     for symb in sortList:
                         res = res + symb + ", "
-                    res = res + "\n"
                 res = res + "\n"    
 
         return res
@@ -165,11 +210,7 @@ class SudokuBoard:
 
 def createStandardSudoku():
     symbols = set(['1','2','3','4','5','6','7','8','9'])
-
-
     allCells = [SudokuCell((i,j)) for j in range(9) for i in range(9)]
-
-
     allSubunits =[]
 
     for i in range(9):
@@ -269,7 +310,8 @@ class Region(SudokuSubunit):
 
     def addCell(self, cell):
         returnValue = False  
-        if cell.key[1] // 3 == self.rowRegion and cell.key[0] // 3 == self.colRegion:
+        if cell.key[1] // 3 == self.rowRegion and \
+           cell.key[0] // 3 == self.colRegion:
             self.cells.append(cell)
             returnValue = True
         return returnValue
@@ -280,13 +322,28 @@ class SudokuCell:
         self.key=key
         self.value=value
         self.belongsTo = []
-        self.blockedValues = set([])
-        self.inferredBlockedValues = []
+        self.blockedValues = {0: set([])}
 
     def setValue(self, v):
         self.value = v
-    
+        self.blockedValues[0] = set([])
+        for sub in self.belongsTo:
+            #print(sub)
+            for c1 in sub.cells:
+                if c1 !=  self and not(c1.value):
+                    #print("inserted block", str(c1), str(self))
+                    c1.blockedValues[0] = c1.blockedValues[0].union( set([v]))
 
+        
+    def getBlockedAtLevel(self, level):
+        res = set([])
+        for lev in range(level + 1):
+            if lev in self.blockedValues:
+                res = res.union (self.blockedValues[lev])
+        return res
         
     def addBelongsTo(self, subUnit):
         self.belongsTo.append(subUnit)
+
+    def __str__(self):
+        return "Key: {}, {} ".format(self.key[0], self.key[1])
