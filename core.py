@@ -1,6 +1,20 @@
 import sys
 import itertools
 
+def displayCellList(list):
+    res = "Cell list: "
+    for c in list:
+        res = res + str(c) + ", "
+    return res    
+
+def displaySubunitList(list):
+    res = "subunit list:\n"
+    for c in list:
+        res = res + str(c) + "\n"
+    return res    
+    
+
+
 def powerset(iterable, n):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
     "this implementation does not include empty set"
@@ -19,41 +33,93 @@ def findRestrictedTo(level, setOfValues, setOfCells):
 
     
 class ActionItem:
-    def __init__(self, cells, values, subUnit = None):
-        self.subUnit = subUnit
-        self.cells = cells
+    def __init__(self, cells, values, subUnita = None, subUnitb = None):
+        #subunit is the core subunit that was used to analyse
+        self.subUnit = subUnita
+        #othersubunit is a subunit that shares the self.cells with core subunit
+        self.otherSubunit = subUnitb
+        #cells subset of intersection of self.subUnit and self.otherSubunit
+        self.cells  = cells
+        #values aare symbols that msut be assigned to cells in self.cells
         self.values = values
         #insertBlocked
         #inferredBlockedValues 
         pass
+#self.subUnit and self.otherSubunit null indicates a cell
+#that is updated no further action  Set Value
 
+#len(self.cells) = len(self.values) = 1. The cell value can be set
+#no further action as the new value will handle restriction updates in later run
+
+#subUnit and otherSubunit not null:  block self.cells with
+#complement to self.values
+#plus block  complement of cells in otherSubunit with self.values 
+# subUnit not Null and otherSubunit null only perform first of
+#actions above
+
+# subUnit Null and  otherSubunit not null only perform 2. of actions above
+
+
+    
     def updateBoard(self):
-        print("mystery", self.values)
-        if len(self.values) == 1:
-            assert(len(self.cells) == 1)
+        if self.size() < 20:
             print("updating now", self.cells[0].key, self.values)
             self.cells[0].setValue(self.values[0])
             return True
         return False
+
+    def __eq__(self, other):
+        return (set(self.cells) == set(other.cells)) and\
+            (set(self.values) == set(other.values)) and\
+            self.subUnit == other.subunit
+
+    def size(self):
+        if len(self.cells) == 1:
+            if self.subUnit:
+                val = 11
+            else:
+                val = 1
+        else: 
+            val=len(self.cells)
+            if self.subUnit:
+                val = val + 100
+            elif self.otherSubunit:
+                val = val + 10
+                
+        return val
+        
+    def __lt__(self, other):
+        
+        return self.size() < other.size()
     
     def __str__(self):
-        if not(self.subUnit):
+        if not(self.subUnit) and not(self.otherSubunit):
             #set value directly#
-            return "{}: Cell: {} Value = {}".format(
-                "set value",self.cells[0].key, self.values)
+            return "{}: Cell: {} Value = {} {}".format(
+                "set value",self.cells[0].key, self.values, self.size())
 
         else:
             cellsText = ""
             for k in self.cells:
                 cellsText = cellsText + str(k.key) + ","
                 
-            if len(self.cells) > 1:
+            if len(self.cells) == 1 and self.subUnit:
                 type = "set value in subunit"
             else:
                 type = "constrain"
 
-            return "{} {}  Cells: {} Values = {}".format(
-                type, self.subUnit.id, cellsText, self.values)
+            if self.subUnit:
+                return "{} {}  Cells: {} Values = {} {}".format(
+                    type, self.subUnit.id, cellsText, self.values,
+                    self.otherSubunit, self.size())
+            elif self.otherSubunit:
+                #print("found value")
+                #print(self.otherSubunit)
+                return "{}  Cells: {} Values = {} {} {}".format(
+                    type, cellsText, self.values,
+                    self.otherSubunit.id, self.size())
+            else:
+                print("found unknown action")
 
 
 
@@ -102,45 +168,53 @@ class SudokuBoard:
         for c in self.cells:
             if not(c.value):
                 blocked = c.getBlockedAtLevel(level)
-                #print(blocked)
                 if len(blocked) == len(self.symbols) - 1:
                     res.append(ActionItem([c],list(self.symbols-set(blocked))))
-        
-        
-        res1 = []
-        for c in self.cells:
-            if not(c.value):
-                blocked = []
-                for sub in c.belongsTo:
-                    for newCell in sub.cells:
-                        if newCell.value:
-                            blocked.append(newCell.value)
-                #print(blocked)
-                if len(set(blocked)) == len(self.symbols) -1:
-                    res1.append(ActionItem([c],list(self.symbols-set(blocked))))
-        #resolve this by setting cellc value to "
-        "the last variable in tuple above            "
-        print("Checking res firtst res")
-        for i in res:
-            print( i)
-        print("Now", res1)
-        for i in res1:
-            print (i)
-
+                    #print(str(c), blocked)
+                    #a=input()
         return res           
+
+        
+#CHECKCHECKCHECK the following uncommenting shoudl go out        
+#        res1 = []
+#        for c in self.cells:
+#            if not(c.value):
+#                blocked = []
+#                for sub in c.belongsTo:
+#                    for newCell in sub.cells:
+#                        if newCell.value:
+#                            blocked.append(newCell.value)
+#                #print(blocked)
+#                if len(set(blocked)) == len(self.symbols) -1:
+#                    res1.append(ActionItem([c],list(self.symbols-set(blocked))))
+#        #resolve this by setting cellc value to "
+#        "the last variable in tuple above            "
+#        print("Checking res firtst res")
+#        for i in res:
+#            print( i)
+#        print("Now", res1)
+#        for i in res1:
+#            print (i)
+#
 
 
     def otherSubunitsFromCells(self, restrictedCells, originSubunit):
         a = list(restrictedCells)
-        print(a)
+        #print(displayCellList(a))
         res = set(a[0].belongsTo)
-        print(res)
+        #print(displaySubunitList(res))
         for s in a[1:]:
             res = res.intersection(s.belongsTo)
-            print(res)
-        print( res.difference(set([originSubunit])))
-        sys.exit()
-        return res.difference(set([originSubunit]))
+        #print(displaySubunitList(list(res)))
+        #print(displaySubunitList(list( res.difference(set([originSubunit])))))
+        if len(res.difference(set([originSubunit]))) == 1:
+            #for standard sudoku only possibility is 1 or zero
+            #unless len restriced cells is one. Thes have been
+            #handled elsewhere
+            return res.difference(set([originSubunit])).pop()
+
+        return None
+                                     
         
 
     
@@ -153,31 +227,34 @@ class SudokuBoard:
         
         for sub in self.subUnits:
             (openCells, remainingSymbols) = sub.getOpenCellsRemainingSymbols()
-            #-2 below because -1 handled in scanCellsForValues 0 irrelevant
+            #-2 below because -1 handled in scanCellsForValues
+            #0 irrelevant handled separately afterwards
+            #-1 not -2????
             for subRemainingSymbols in powerset(remainingSymbols,
-                                   len(remainingSymbols) - 2):
+                                                len(remainingSymbols) - 2):
                 restricted = findRestrictedTo(
                     level, set(subRemainingSymbols), openCells)
+
+                newSubunit = self.otherSubunitsFromCells(restricted, sub)
                 if len(restricted) == len(subRemainingSymbols):
+                    #print("added constraint")
                     constraintsList.append(
                         ActionItem(
-                            list(restricted),
-                            list(subRemainingSymbols), sub))
-                    
-                elif len(restricted) <=3:
-                    newSubunit = self.otherSubunitsFromCells(restricted, sub)
-                    print("found restrictuion item")
-                    print(newSubUnit)
-                    sys.exit()
-                    #value three above specific for standardsudoku
-                    #more = 
-                    
-                    #print("\nfound restriction")
-                    #print(sub)
-                    #printS(remainingSymbols)
-                    #printS(subSet)
-                    #printS(forPrint)
-                    #print("\n")
+                            list(restricted), list(subRemainingSymbols),
+                            sub,  newSubunit))
+                    #print(constraintsList[-1])
+                elif len(restricted) <=3 and newSubunit:
+                    #print("foundnew type")
+                    #print(str(sub))
+                    #print(displayCellList(restricted))
+                    #print(str(newSubunit))
+                    constraintsList.append(
+                        ActionItem(
+                            list(restricted), list(subRemainingSymbols),
+                            None, newSubunit))
+                    #print("newtype")
+                    #print(constraintsList[-1])
+                    #input()
 
         return(constraintsList)
                     

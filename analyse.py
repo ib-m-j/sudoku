@@ -63,12 +63,68 @@ mediumValues ={
 
         
 def run():
+    #basic algorithm: for each subunit take set UNUSED af all unused symbols.
+    #for each subset of UNUSED (candidateSet)
+    #check if the values therein are restricted
+    #to som subset of the free cells in subunit (restrictionSet).
+    #For each of these cases register a corresponding action.
+    #
+    #Use following definitions:
+    #restrictionComplementSet is the set of cells unassignedin the subunit that
+    #are not in restrictionSet
+    #
+    #candidateComplementSet is the set of unused symbols in the subunit
+    #that are not in the candidateSet
+    #
+    #
+    #If restrictionSet contains 1 element (UpdateValue1) or
+    #restrictionComplementSet contains
+    #one element (UpdateValue2) the value of the corresponding cell can be set.
+    #Action UpdateValue1 or 2 as described.
+    #UpdateValue1 
+    #updateValue2 also requires an
+    #Blocking2 (see below). This is not done as the corresponding
+    #gets handled automatically ata later registration.
+    #
+    #
+    #If the restrictionSet is same size as size candidateSet we 
+    #found a split. This means that the
+    #values of the restrictionSet is equal to  the candidateSet values and
+    #the values of the restrictionComplementSet is equal
+    #to the candidateComplementSet
+    #This is handled by action updateSplit.
+    #
+    #updateSlit consists of registration of a number of blockings:
+    #(Blocking1): restrictionSet is blocked for values in
+    #candidateComplementSet.
+    #(Blocking2) If another subunit contains restrictionSet,
+    #update the relative complement
+    #with blockings from candidateSet
+    #Special case: if restrictionSet is same size as candidateSet
+    #but restricktionComplementSet is empty, there is no Blocking1 but
+    #Blocking2 is still relevant
+    #
+    #
+    #Finally if restrictionSet is larger than candidateSet there is still
+    #the possibility of a Blocking2 action.
+    #
+    #After rigistering all actions, sort action list
+    #first UpdateValue1 then UpdateValue2. Then follow actions
+    #sorted by size of restrictionSet
+    #
+    #Go through actionList, perform all uptaeValue1 or updateValue2 actions.
+    #If some action was done here. start all over by registering new actionList.
+    #If no update1 or update 2 actions are done do one new action and
+    #start over with new actionList.
+    #end when all cells filles out or actionList stable.
+    #
+    
     mainBoard = core.createStandardSudoku()
     
 
 
     fixedInit ={}
-    for (k,v) in mediumValues.items():
+    for (k,v) in hardValues.items():
         fixedInit[k[1],k[0]] = v
     #    for c in mainBoard.cells:
     #        if (c.key[1], c.key[0]) in initValues:
@@ -97,20 +153,34 @@ def run():
     while foundValues < 81:
         inserted = False
         print("Starting ronund")
-        for level in range(1): 
+        for level in range(1):
+            #below does a scanning with candidateSet containing 1 element
+            #and restrictionSet sixe of unused symbols minus 1.
+            #doing separately avoids registering everything three
+            #times and the corresponding SetBlocked2 gets done
+            #automatically in later phase.
             actionPoints = mainBoard.scanCellsForValue()
             actionPoints.extend(mainBoard.scanForConstraints(level))
-            
-        for a in actionPoints:
-            print(a)
-            #printActionPoints(actionPoints)
+
+
+        actionPoints.sort()
+
+        updated = 0
         for x in actionPoints:
-            x.updateBoard()
-                
+            if x.size() < 20:
+                updated = updated + x.updateBoard()
+                foundValues = foundValues + 1
             print("\nUpdated with {}".format(x.__str__()))
             print(mainBoard)
-        a = input()
-        if a == "a": 
+
+        for a in actionPoints:
+                print(a)
+
+        print(updated)
+        print(mainBoard)
+        a=input()
+
+        if updated == 0:
             foundValues =81
     
 if __name__ == '__main__':
