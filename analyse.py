@@ -24,6 +24,24 @@ def printActionPoints(a):
     print( res)
     
 
+def describeActionPoints(actionPoints):
+    desc = {}
+    for a in actionPoints:
+        if a.size() in desc:
+            desc[a.size()] = desc[a.size()] + 1
+        else:
+            desc[a.size()] = 1
+
+    keys = list(desc.keys())
+    keys.sort()
+    print("ActionPoints Overview")
+    for (k,v) in desc.items():
+        print("Size = {}, number of items {}".format(k,v))
+
+
+
+
+    
 #while developing
 hardValues ={(0,2):"4",(0,5):"3",\
              (1,0):"6",(1,1):"3",(1,5):"7", \
@@ -57,7 +75,6 @@ mediumValues ={
     (6,2):"7",(6,4):"5",(6,6):"4",(6,8):"2",\
     (7,5):"4",\
     (8,0):"6",(8,2):"2",(8,3):"9",(8,8):"8" }
-
 
 
 
@@ -124,7 +141,7 @@ def run():
 
 
     fixedInit ={}
-    for (k,v) in hardValues.items():
+    for (k,v) in easyValues.items():
         fixedInit[k[1],k[0]] = v
     #    for c in mainBoard.cells:
     #        if (c.key[1], c.key[0]) in initValues:
@@ -142,47 +159,51 @@ def run():
     print(mainBoard.displayBlockedRow(level = 0))
     #print(mainBoard.subUnits[0])
     #print(mainBoard.subUnits[0].getUnusedValues(symbols))
+    remainingValues = mainBoard.findRemaining()
 
-    foundValues = 0
-    for c in mainBoard.cells:
-        if c.value:
-            foundValues += 1
-
-    print(foundValues)
-
-    while foundValues < 81:
+    difficulty = []
+    while remainingValues > 0:
         inserted = False
-        print("Starting ronund")
-        for level in range(1):
-            #below does a scanning with candidateSet containing 1 element
-            #and restrictionSet sixe of unused symbols minus 1.
-            #doing separately avoids registering everything three
-            #times and the corresponding SetBlocked2 gets done
-            #automatically in later phase.
-            actionPoints = mainBoard.scanCellsForValue()
-            actionPoints.extend(mainBoard.scanForConstraints(level))
+        print("Starting round")
+        #below does a scanning with candidateSet containing 1 element
+        #and restrictionSet sixe of unused symbols minus 1.
+        #doing separately avoids registering everything three
+        #times and the corresponding SetBlocked2 gets done
+        #automatically in later phase.
+        actionPoints = mainBoard.scanCellsForValue()
+        actionPoints.extend(mainBoard.scanForConstraints(0))
 
+        #print(mainBoard)
+        #print("Remaining values: ", remainingValues)
 
-        actionPoints.sort()
+        #actionPoints.sort()
+        #for a in actionPoints:
+        #        print(a.__str__())
 
+        #describeActionPoints(actionPoints)
+        difficulty.append(sum(map(lambda x: x.size() < 12, actionPoints)))
+        #a=input()
+        
+                
         updated = 0
         for x in actionPoints:
-            if x.size() < 20:
+            if x.size() < 12:
                 updated = updated + x.updateBoard()
-                foundValues = foundValues + 1
-            print("\nUpdated with {}".format(x.__str__()))
-            print(mainBoard)
+                #print("\nUpdated with {}".format(x.__str__()))
+                #print(mainBoard)
 
-        for a in actionPoints:
-                print(a)
+        remainingValues = mainBoard.findRemaining()
 
-        print(updated)
-        print(mainBoard)
-        a=input()
+        if updated == 0 and remainiingValues > 0:
+            print("Did not finish properly")
+            break
 
-        if updated == 0:
-            foundValues =81
-    
+    print("finished with")
+    print(mainBoard)
+
+    print(difficulty)
+        
+                
 if __name__ == '__main__':
     run()
     #cells = userinterface.getBoard(cellKeys)

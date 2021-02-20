@@ -63,7 +63,7 @@ class ActionItem:
     
     def updateBoard(self):
         if self.size() < 20:
-            print("updating now", self.cells[0].key, self.values)
+            #print("updating now", self.cells[0].key, self.values)
             self.cells[0].setValue(self.values[0])
             return True
         return False
@@ -85,6 +85,10 @@ class ActionItem:
                 val = val + 100
             elif self.otherSubunit:
                 val = val + 10
+
+        #print(self.cells, self.values, self.subUnit)
+        #print("val testing for val", val)
+        #a = input()
                 
         return val
         
@@ -109,7 +113,7 @@ class ActionItem:
                 type = "constrain"
 
             if self.subUnit:
-                return "{} {}  Cells: {} Values = {} {}".format(
+                return "{} {}  Cells: {} Values = {} {} {}".format(
                     type, self.subUnit.id, cellsText, self.values,
                     self.otherSubunit, self.size())
             elif self.otherSubunit:
@@ -174,7 +178,15 @@ class SudokuBoard:
                     #a=input()
         return res           
 
-        
+
+    def findRemaining(self):
+        remainingValues = 0
+        for c in self.cells:
+            if not(c.value):
+                remainingValues += 1
+        return remainingValues
+
+    
 #CHECKCHECKCHECK the following uncommenting shoudl go out        
 #        res1 = []
 #        for c in self.cells:
